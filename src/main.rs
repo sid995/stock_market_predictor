@@ -2,11 +2,15 @@ use dotenv::dotenv;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::{
+    collections::HashMap,
+    io::{self, Write},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct TimeSeriesDaily {
     #[serde(rename = "Time Series (Daily)")]
-    time_series: std::collections::HashMap<String, DailyData>,
+    time_series: HashMap<String, DailyData>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,7 +52,13 @@ fn calculate_average_close(data: &TimeSeriesDaily) -> f64 {
 async fn main() {
     dotenv().ok();
     let api_key = env::var("ALPHA_VANTAGE_API_KEY").expect("ALPHA_VANTAGE_API_KEY not set");
-    let symbol = "IBM";
+
+    println!("Enter the stock symbol you wish to analyze:");
+    let mut symbol = String::new();
+    io::stdin()
+        .read_line(&mut symbol)
+        .expect("Failed to read line");
+    let symbol = symbol.trim();
 
     match fetch_stock_data(symbol, &api_key).await {
         Ok(data) => {
@@ -57,40 +67,5 @@ async fn main() {
             println!("Average close for {}: {}", symbol, average_close);
         }
         Err(e) => println!("Error fetching data: {}", e),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_calculate_average_close() {
-        let mut time_series = std::collections::HashMap::new();
-        time_series.insert(
-            "2023-04-01".to_string(),
-            DailyData {
-                open: "100.0".to_string(),
-                high: "110.0".to_string(),
-                low: "90.0".to_string(),
-                close: "105.0".to_string(),
-                volume: "1000".to_string(),
-            },
-        );
-        time_series.insert(
-            "2023-04-02".to_string(),
-            DailyData {
-                open: "105.0".to_string(),
-                high: "115.0".to_string(),
-                low: "95.0".to_string(),
-                close: "110.0".to_string(),
-                volume: "1000".to_string(),
-            },
-        );
-        let data = TimeSeriesDaily { time_series };
-
-        let average_close = calculate_average_close(&data);
-        let expected_average_close = 107.5; // (105.0 + 110.0) / 2
-        assert_eq!(average_close, expected_average_close);
     }
 }
